@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="UCVS is a training-free, two-stage framework for universal and temporally consistent video style transfer.">
+  <meta name="keywords" content="UCVS, video style transfer, training-free, diffusion, FlowEdit, attention distillation, video generation">
+  <meta name="author" content="Weihao Hu, Yang Zhou, Hui Huang">
+  <meta name="theme-color" content="#ffffff">
+  <meta property="og:title" content="UCVS: Training-Free Universal and Consistent Video Style Transfer">
+  <meta property="og:description" content="Reference-faithful stylization from image diffusion, temporally coherent refinement from a pretrained video model.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="./static/media/qualitative_comparison.png">
+  <title>UCVS · Training-Free Universal and Consistent Video Style Transfer</title>
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&amp;family=Noto+Sans+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="stylesheet" href="./static/css/spg-theme.css">
+  <link rel="icon" href="./static/media/favicon.svg" type="image/svg+xml">
+  <script defer src="./static/js/index.js"></script>
+</head>
+<body>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="nav-inner">
+      <a class="brand" href="#top" aria-label="UCVS home">
+        <span class="brand-mark">U</span>
+        <span>UCVS</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#method">Method</a>
+        <a href="#video-comparison">Comparison</a>
+        <a href="#results">Results</a>
+        <a href="#ablation">Ablation</a>
+        <a href="#bibtex">BibTeX</a>
+        <button id="motion-toggle" class="motion-toggle" type="button" aria-pressed="false">Pause motion</button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <header class="hero-section hero-centered">
+      <div class="page-shell hero-centered-content">
+        <h1>UCVS: Training-Free Universal and Consistent Video Style Transfer</h1>
+        <p class="hero-venue">Eurographics</p>
+        <p class="hero-authors">
+          <a href="#top">Weihao Hu</a>
+          <span aria-hidden="true">&nbsp;&nbsp;</span>
+          <a href="https://zhouyangvcc.github.io/" target="_blank" rel="noreferrer">Yang Zhou</a>
+          <span aria-hidden="true">&nbsp;&nbsp;</span>
+          <a href="https://vcc.tech/~huihuang" target="_blank" rel="noreferrer">Hui Huang</a>
+        </p>
+        <p class="hero-affiliation">Visual Compute Center, Shenzhen University</p>
+        <div class="hero-actions" aria-label="Project resources">
+          <span class="action unavailable" aria-disabled="true">Paper · Coming soon</span>
+          <span class="action unavailable" aria-disabled="true">Code · Coming soon</span>
+        </div>
+        <figure class="hero-teaser">
+          <img src="./static/media/teaser_comparison.webp" alt="UCVS teaser comparing source videos, baseline methods, and diverse stylized results">
+        </figure>
+      </div>
+    </header>
+
+    <header class="legacy-hero" aria-hidden="true">
+      <div class="hero-glow hero-glow-a"></div>
+      <div class="hero-glow hero-glow-b"></div>
+      <div class="page-shell hero-content">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> Training-free video style transfer</p>
+          <h1><strong>UCVS</strong>: Training-Free Universal and Consistent Video Style Transfer</h1>
+          <p class="hero-lede">
+            Preserve the identity and motion of a source video while faithfully carrying the
+            colors, texture, and visual primitives of a single reference image across time.
+          </p>
+          <p class="authors">Weihao Hu · Yang Zhou · Hui Huang · Visual Compute Center, Shenzhen University</p>
+          <div class="hero-actions" aria-label="Project resources">
+            <a class="action primary" href="#results">Explore results</a>
+            <a class="action secondary" href="#method">View method</a>
+            <span class="action unavailable" aria-disabled="true">Paper · Coming soon</span>
+            <span class="action unavailable" aria-disabled="true">Code · Coming soon</span>
+          </div>
+        </div>
+
+        <div class="stat-grid" aria-label="Key project statistics">
+          <div class="stat-card">
+            <span class="stat-value">400</span>
+            <span class="stat-label">content–style pairs</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">0.5607</span>
+            <span class="stat-label">CSD style similarity</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value">0.99194</span>
+            <span class="stat-label">motion smoothness</span>
+          </div>
+          <div class="stat-card accent">
+            <span class="stat-value">0</span>
+            <span class="stat-label">stylized-video training</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="results-carousel-section" id="results" aria-labelledby="results-carousel-title">
+      <div class="wide-shell">
+        <div class="minimal-heading">
+          <h2 id="results-carousel-title">Video Style Transfer with Different Styles</h2>
+        </div>
+        <div class="results-carousel" data-carousel>
+          <button class="carousel-arrow carousel-prev" type="button" aria-label="Show previous content video">&#8592;</button>
+          <div class="carousel-viewport" tabindex="0">
+            <div class="carousel-track">
+              <div class="result-slide is-active" data-content="02">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 02 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content02.jpg"><source src="./static/videos/source-content02.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 02 mosaic style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content02-style14.jpg"><source src="./static/videos/ours-content02-style14.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style14.png" alt="Mosaic portrait reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 02 Mount Fuji style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content02-style20.jpg"><source src="./static/videos/ours-content02-style20.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style20.png" alt="Mount Fuji reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 02 low-poly style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content02-style18.jpg"><source src="./static/videos/ours-content02-style18.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style18.png" alt="Low-poly lion reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 02 cat painting style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content02-style13.jpg"><source src="./static/videos/ours-content02-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style13.png" alt="Cat painting reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 02 flower style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content02-style08.jpg"><source src="./static/videos/ours-content02-style08.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style08.png" alt="Hand-painted flower reference style"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="03" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 03 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content03.jpg"><source src="./static/videos/source-content03.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 mosaic style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content03-style14.jpg"><source src="./static/videos/ours-content03-style14.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style14.png" alt="Mosaic portrait reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 Mount Fuji style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content03-style20.jpg"><source src="./static/videos/ours-content03-style20.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style20.png" alt="Mount Fuji reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 low-poly style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content03-style18.jpg"><source src="./static/videos/ours-content03-style18.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style18.png" alt="Low-poly lion reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 cat painting style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content03-style13.jpg"><source src="./static/videos/ours-content03-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style13.png" alt="Cat painting reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 flower style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content03-style08.jpg"><source src="./static/videos/ours-content03-style08.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style08.png" alt="Hand-painted flower reference style"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="06" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 06 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content06.jpg"><source src="./static/videos/source-content06.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 06 mosaic style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content06-style14.jpg"><source src="./static/videos/ours-content06-style14.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style14.png" alt="Mosaic portrait reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 06 Mount Fuji style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content06-style20.jpg"><source src="./static/videos/ours-content06-style20.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style20.png" alt="Mount Fuji reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 06 low-poly style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content06-style18.jpg"><source src="./static/videos/ours-content06-style18.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style18.png" alt="Low-poly lion reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 06 cat painting style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content06-style13.jpg"><source src="./static/videos/ours-content06-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style13.png" alt="Cat painting reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 06 flower style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content06-style08.jpg"><source src="./static/videos/ours-content06-style08.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style08.png" alt="Hand-painted flower reference style"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="20" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 20 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content20.jpg"><source src="./static/videos/source-content20.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 20 mosaic style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content20-style14.jpg"><source src="./static/videos/ours-content20-style14.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style14.png" alt="Mosaic portrait reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 20 Mount Fuji style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content20-style20.jpg"><source src="./static/videos/ours-content20-style20.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style20.png" alt="Mount Fuji reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 20 low-poly style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content20-style18.jpg"><source src="./static/videos/ours-content20-style18.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style18.png" alt="Low-poly lion reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 20 cat painting style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content20-style13.jpg"><source src="./static/videos/ours-content20-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style13.png" alt="Cat painting reference style"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 20 flower style result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content20-style08.jpg"><source src="./static/videos/ours-content20-style08.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style08.png" alt="Hand-painted flower reference style"></figure>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="carousel-arrow carousel-next" type="button" aria-label="Show next content video">&#8594;</button>
+          <div class="carousel-pagination" aria-label="Result pages">
+            <button class="is-active" type="button" data-slide="0" aria-label="Show result page 1" aria-current="true"></button>
+            <button type="button" data-slide="1" aria-label="Show result page 2"></button>
+            <button type="button" data-slide="2" aria-label="Show result page 3"></button>
+            <button type="button" data-slide="3" aria-label="Show result page 4"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-selected-results" aria-hidden="true">
+      <div class="wide-shell">
+        <div class="minimal-heading">
+          <h2 id="selected-results-title">Video Style Transfer with Different Styles</h2>
+        </div>
+        <div class="selected-results-grid">
+          <figure class="selected-result-cell source-cell" aria-label="Original source video">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-source-content17.jpg">
+              <source src="./static/videos/source-content17.mp4" type="video/mp4">
+            </video>
+          </figure>
+          <figure class="selected-result-cell" aria-label="Mosaic portrait style result">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style14.jpg">
+              <source src="./static/videos/ours-content17-style14.mp4" type="video/mp4">
+            </video>
+            <img class="style-overlay" src="./static/media/style14.png" alt="Mosaic portrait reference style">
+          </figure>
+          <figure class="selected-result-cell" aria-label="Mount Fuji illustration style result">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style20.jpg">
+              <source src="./static/videos/ours-content17-style20.mp4" type="video/mp4">
+            </video>
+            <img class="style-overlay" src="./static/media/style20.png" alt="Mount Fuji reference style">
+          </figure>
+          <figure class="selected-result-cell" aria-label="Low-poly illustration style result">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style18.jpg">
+              <source src="./static/videos/ours-content17-style18.mp4" type="video/mp4">
+            </video>
+            <img class="style-overlay" src="./static/media/style18.png" alt="Low-poly lion reference style">
+          </figure>
+          <figure class="selected-result-cell" aria-label="Cat painting style result">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style13.jpg">
+              <source src="./static/videos/ours-content17-style13.mp4" type="video/mp4">
+            </video>
+            <img class="style-overlay" src="./static/media/style13.png" alt="Cat painting reference style">
+          </figure>
+          <figure class="selected-result-cell" aria-label="Hand-painted flowers style result">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style08.jpg">
+              <source src="./static/videos/ours-content17-style08.mp4" type="video/mp4">
+            </video>
+            <img class="style-overlay" src="./static/media/style08.png" alt="Hand-painted flower reference style">
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="video-comparison-section" id="video-comparison" aria-labelledby="video-comparison-title">
+      <div class="wide-shell">
+        <div class="minimal-heading">
+          <h2 id="video-comparison-title">Comparison with Stylized Video Generation Methods</h2>
+        </div>
+        <div class="comparison-scroller" tabindex="0" aria-label="Scrollable video comparison table">
+          <div class="comparison-table">
+            <div class="comparison-header" aria-hidden="true">
+              <span>Source</span><span>Style</span><span>AnyV2V</span><span>StyleMaster</span>
+              <span>Bernini</span><span>DreamStyle</span><span>Ours</span>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 02 and style 20 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content02.jpg"><source src="./static/videos/source-content02.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/style20.png" alt="Mount Fuji reference style"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content02-anyv2v.jpg"><source src="./static/videos/comparison-content02-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content02-stylemaster.jpg"><source src="./static/videos/comparison-content02-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content02-bernini.jpg"><source src="./static/videos/comparison-content02-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content02-dreamstyle.jpg"><source src="./static/videos/comparison-content02-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content02-style20.jpg"><source src="./static/videos/ours-content02-style20.mp4" type="video/mp4"></video>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 03 and style 06 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content03.jpg"><source src="./static/videos/source-content03.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/style06.png" alt="The Starry Night reference style"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content03-anyv2v.jpg"><source src="./static/videos/comparison-content03-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content03-stylemaster.jpg"><source src="./static/videos/comparison-content03-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content03-bernini.jpg"><source src="./static/videos/comparison-content03-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content03-dreamstyle.jpg"><source src="./static/videos/comparison-content03-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content03-style06.jpg"><source src="./static/videos/ours-content03-style06.mp4" type="video/mp4"></video>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 06 and style 08 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content06.jpg"><source src="./static/videos/source-content06.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/style08.png" alt="Hand-painted flower reference style"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content06-anyv2v.jpg"><source src="./static/videos/comparison-content06-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content06-stylemaster.jpg"><source src="./static/videos/comparison-content06-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content06-bernini.jpg"><source src="./static/videos/comparison-content06-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content06-dreamstyle.jpg"><source src="./static/videos/comparison-content06-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content06-style08.jpg"><source src="./static/videos/ours-content06-style08.mp4" type="video/mp4"></video>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 17 and style 18 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content17.jpg"><source src="./static/videos/source-content17.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/style18.png" alt="Low-poly lion reference style"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content17-anyv2v.jpg"><source src="./static/videos/comparison-content17-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content17-stylemaster.jpg"><source src="./static/videos/comparison-content17-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content17-bernini.jpg"><source src="./static/videos/comparison-content17-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-comparison-content17-dreamstyle.jpg"><source src="./static/videos/comparison-content17-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content17-style18.jpg"><source src="./static/videos/ours-content17-style18.mp4" type="video/mp4"></video>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-showcase" aria-hidden="true">
+      <div class="page-shell">
+        <div class="section-heading light-heading">
+          <p class="section-kicker">Selected results</p>
+          <h2 id="showcase-title">One framework, genuinely different visual languages.</h2>
+          <p>All clips are produced by the same frozen two-stage pipeline from one style image per video.</p>
+        </div>
+        <div class="showcase-grid">
+          <figure class="video-card featured">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content02-style20.jpg">
+              <source src="./static/videos/ours-content02-style20.mp4" type="video/mp4">
+            </video>
+            <figcaption><span>Blue crayon landscape</span><small>content02 · style20</small></figcaption>
+          </figure>
+          <figure class="video-card">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content03-style06.jpg">
+              <source src="./static/videos/ours-content03-style06.mp4" type="video/mp4">
+            </video>
+            <figcaption><span>Swirling night brushwork</span><small>content03 · style06</small></figcaption>
+          </figure>
+          <figure class="video-card">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content06-style08.jpg">
+              <source src="./static/videos/ours-content06-style08.mp4" type="video/mp4">
+            </video>
+            <figcaption><span>Hand-painted flowers</span><small>content06 · style08</small></figcaption>
+          </figure>
+          <figure class="video-card">
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style18.jpg">
+              <source src="./static/videos/ours-content17-style18.mp4" type="video/mp4">
+            </video>
+            <figcaption><span>Low-poly illustration</span><small>content17 · style18</small></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" id="overview" aria-labelledby="overview-title">
+      <div class="page-shell narrow-shell">
+        <div class="section-heading centered">
+          <p class="section-kicker" id="overview-title">Abstract</p>
+        </div>
+        <div class="abstract-copy">
+          <p>
+            Video style transfer remains challenging because preserving temporal consistency often
+            suppresses the diversity and specificity of the reference style. UCVS addresses this
+            tension with a training-free, two-stage framework that combines an image diffusion model
+            with a pretrained text-to-video model.
+          </p>
+          <p>
+            Stage I introduces <strong>Temporal Improved Attention Distillation</strong> to produce a
+            reference-faithful coarse stylized video. Stage II applies
+            <strong>Flow-Guided Temporal Refinement</strong>, using inversion-free flow updates and
+            reference key-value injection to construct the conditional difference required by FlowEdit.
+            The resulting velocity difference suppresses residual flicker while retaining the style
+            details established in Stage I, without training on stylized videos.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-input-output" aria-hidden="true">
+      <div class="page-shell">
+        <div class="section-heading">
+          <p class="section-kicker">Input → output</p>
+          <h2 id="io-title">A source video and one style image are all UCVS needs.</h2>
+        </div>
+        <div class="io-flow">
+          <figure class="io-card">
+            <span class="io-index">01</span>
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-source-content17.jpg">
+              <source src="./static/videos/source-content17.mp4" type="video/mp4">
+            </video>
+            <figcaption><strong>Source video</strong><span>Identity, structure, and motion</span></figcaption>
+          </figure>
+          <div class="flow-arrow" aria-hidden="true">+</div>
+          <figure class="io-card style-card">
+            <span class="io-index">02</span>
+            <img src="./static/media/style18.png" alt="Low-poly lion reference style">
+            <figcaption><strong>Style image</strong><span>Color, texture, and visual primitives</span></figcaption>
+          </figure>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <figure class="io-card result-card">
+            <span class="io-index">03</span>
+            <video autoplay muted loop playsinline controls preload="metadata" data-autoplay
+                   poster="./static/media/poster-ours-content17-style18.jpg">
+              <source src="./static/videos/ours-content17-style18.mp4" type="video/mp4">
+            </video>
+            <figcaption><strong>UCVS result</strong><span>Reference-faithful and temporally coherent</span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" id="method" aria-labelledby="method-title">
+      <div class="page-shell">
+        <div class="section-heading centered method-heading">
+          <h2 id="method-title">Method</h2>
+        </div>
+        <figure class="paper-figure method-figure">
+          <img src="./static/media/method.png" alt="Overview of the two-stage UCVS framework with T2V-based temporal refinement">
+        </figure>
+        <div class="method-description">
+          <p>
+            UCVS is a training-free, two-stage framework that combines the broad style generalization
+            of a pretrained image diffusion model with the temporal prior of a pretrained text-to-video
+            model. Stage I uses Temporal Improved Attention Distillation to optimize a reference-faithful
+            coarse stylized video through bidirectional Q/K/V correspondence and hierarchical keyframe
+            propagation. Stage II applies Flow-Guided Temporal Refinement with a frozen T2V model.
+            Because FlowEdit relies on the difference between source and target conditions, the source
+            branch retains its native self-attention K/V features, whereas the target branch injects K/V
+            features cached from the Stage-I result. Their velocity difference refines the video latent,
+            suppressing residual flicker while preserving the transferred appearance and source motion.
+          </p>
+          <p hidden>
+            UCVS is a training-free, two-stage framework that combines the broad style generalization
+            of a pretrained image diffusion model with the temporal prior of a pretrained text-to-video model.
+            In Stage I, Temporal Improved Attention Distillation transfers the reference appearance
+            through bidirectional Q/K/V feature correspondence and hierarchical keyframe propagation,
+            producing a style-faithful coarse video without stylized-video training. In Stage II,
+            Flow-Guided Temporal Refinement adapts inversion-free FlowEdit updates to video. Native
+            source K/V features and injected Stage-I K/V features construct the source-target conditional
+            difference, whose velocity field guides temporally coherent refinement.
+          </p>
+        </div>
+        <div class="legacy-stage-grid">
+          <article class="stage-card">
+            <div class="stage-number">I</div>
+            <div>
+              <p class="stage-overline">Style acquisition</p>
+              <h3>Temporal Improved Attention Distillation</h3>
+              <p>
+                Extends Attention Distillation with bidirectional Q/K/V feature correspondence.
+                Sparse keyframes are stylized first; hierarchical bisection then fills the remaining
+                frames from nearby, already optimized anchors.
+              </p>
+              <ul>
+                <li>Frozen Stable Diffusion 1.5 backbone</li>
+                <li>Style, content, and temporal feature losses</li>
+                <li>No stylized-video training data</li>
+              </ul>
+            </div>
+          </article>
+          <article class="stage-card second-stage">
+            <div class="stage-number">II</div>
+            <div>
+              <p class="stage-overline">Temporal refinement</p>
+              <h3>Flow-Guided Temporal Refinement</h3>
+              <p>
+                Adapts inversion-free FlowEdit updates to a frozen T2V model. Native source K/V features
+                and injected Stage-I K/V features define the two conditions whose velocity difference
+                guides temporally coherent refinement.
+              </p>
+              <ul>
+                <li>Pretrained video dynamics</li>
+                <li>Reference K/V injection</li>
+                <li>Default flow configuration</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="legacy-qualitative" aria-hidden="true">
+      <div class="page-shell">
+        <div class="section-heading light-heading centered">
+          <p class="section-kicker">Qualitative comparison</p>
+          <h2 id="comparison-title">The reference style stays specific—not merely “painterly.”</h2>
+          <p>UCVS preserves person identity and scene layout while matching the supplied style primitives.</p>
+        </div>
+        <figure class="paper-figure dark-figure">
+          <img src="./static/media/qualitative_comparison.png" alt="Frame-wise comparison between UCVS and four baselines">
+          <figcaption>
+            Frame 40 across four content–style pairs. AnyV2V shows style decay, StyleMaster can distort
+            structure, and training-based baselines may override the reference style or person identity.
+          </figcaption>
+        </figure>
+        <figure class="paper-figure dark-figure temporal-figure">
+          <img src="./static/media/temporal_comparison.png" alt="Multi-frame temporal comparison">
+          <figcaption>
+            Frames 0, 20, 40, 60, and 80. UCVS maintains the watercolor marks across changing poses and
+            interactions, without suppressing the underlying motion.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section-block tinted-section" id="ablation" aria-labelledby="ablation-title">
+      <div class="wide-shell ablation-shell">
+        <div class="section-heading centered ablation-heading">
+          <p class="section-kicker" id="ablation-title">Ablation</p>
+          <p>We isolate frame-wise stylization, TIAD, and FGTR under the same evaluation protocol.</p>
+        </div>
+        <figure class="paper-figure">
+          <img src="./static/media/ablation_comparison.png" alt="Qualitative ablation comparing Naive, w/o FGTR, w/o TIAD, and full UCVS">
+          <figcaption>
+            Naive processes frames independently. TIAD greatly reduces frame-to-frame style variation,
+            while FGTR further stabilizes the result using video-level dynamics. The complete framework
+            combines strong reference fidelity with temporal consistency.
+          </figcaption>
+        </figure>
+        <div class="results-carousel ablation-carousel" data-carousel aria-label="Dynamic ablation examples">
+          <button class="carousel-arrow carousel-prev" type="button" aria-label="Show previous ablation example">&#8592;</button>
+          <div class="carousel-viewport" tabindex="0">
+            <div class="carousel-track">
+              <div class="result-slide is-active" data-content="02-style18">
+                <div class="comparison-scroller" tabindex="0">
+                  <div class="ablation-video-table">
+                    <div class="ablation-video-header" aria-hidden="true"><span>Source Video</span><span>Style Image</span><span>Naive</span><span>w/o FGTR</span><span>w/o TIAD</span><span>UCVS</span></div>
+                    <div class="ablation-video-row" aria-label="Dynamic ablation example 1">
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content02-style18-source.jpg"><source src="./static/videos/ablation-content02-style18-source.mp4" type="video/mp4"></video>
+                      <div class="comparison-style"><img src="./static/media/ablation-style18.png" alt="Style 18 reference image"></div>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content02-style18-naive.jpg"><source src="./static/videos/ablation-content02-style18-naive.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content02-style18-wo-fgtr.jpg"><source src="./static/videos/ablation-content02-style18-wo-fgtr.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content02-style18-wo-tiad.jpg"><source src="./static/videos/ablation-content02-style18-wo-tiad.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content02-style18-ucvs.jpg"><source src="./static/videos/ablation-content02-style18-ucvs.mp4" type="video/mp4"></video>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="04-style06" aria-hidden="true">
+                <div class="comparison-scroller" tabindex="0">
+                  <div class="ablation-video-table">
+                    <div class="ablation-video-header" aria-hidden="true"><span>Source Video</span><span>Style Image</span><span>Naive</span><span>w/o FGTR</span><span>w/o TIAD</span><span>UCVS</span></div>
+                    <div class="ablation-video-row" aria-label="Dynamic ablation example 2">
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content04-style06-source.jpg"><source src="./static/videos/ablation-content04-style06-source.mp4" type="video/mp4"></video>
+                      <div class="comparison-style"><img src="./static/media/ablation-style06.png" alt="Style 06 reference image"></div>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content04-style06-naive.jpg"><source src="./static/videos/ablation-content04-style06-naive.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content04-style06-wo-fgtr.jpg"><source src="./static/videos/ablation-content04-style06-wo-fgtr.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content04-style06-wo-tiad.jpg"><source src="./static/videos/ablation-content04-style06-wo-tiad.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content04-style06-ucvs.jpg"><source src="./static/videos/ablation-content04-style06-ucvs.mp4" type="video/mp4"></video>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="06-style13" aria-hidden="true">
+                <div class="comparison-scroller" tabindex="0">
+                  <div class="ablation-video-table">
+                    <div class="ablation-video-header" aria-hidden="true"><span>Source Video</span><span>Style Image</span><span>Naive</span><span>w/o FGTR</span><span>w/o TIAD</span><span>UCVS</span></div>
+                    <div class="ablation-video-row" aria-label="Dynamic ablation example 3">
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content06-style13-source.jpg"><source src="./static/videos/ablation-content06-style13-source.mp4" type="video/mp4"></video>
+                      <div class="comparison-style"><img src="./static/media/ablation-style13.png" alt="Style 13 reference image"></div>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content06-style13-naive.jpg"><source src="./static/videos/ablation-content06-style13-naive.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content06-style13-wo-fgtr.jpg"><source src="./static/videos/ablation-content06-style13-wo-fgtr.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content06-style13-wo-tiad.jpg"><source src="./static/videos/ablation-content06-style13-wo-tiad.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content06-style13-ucvs.jpg"><source src="./static/videos/ablation-content06-style13-ucvs.mp4" type="video/mp4"></video>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="16-style01" aria-hidden="true">
+                <div class="comparison-scroller" tabindex="0">
+                  <div class="ablation-video-table">
+                    <div class="ablation-video-header" aria-hidden="true"><span>Source Video</span><span>Style Image</span><span>Naive</span><span>w/o FGTR</span><span>w/o TIAD</span><span>UCVS</span></div>
+                    <div class="ablation-video-row" aria-label="Dynamic ablation example 4">
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content16-style01-source.jpg"><source src="./static/videos/ablation-content16-style01-source.mp4" type="video/mp4"></video>
+                      <div class="comparison-style"><img src="./static/media/ablation-style01.png" alt="Style 01 reference image"></div>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content16-style01-naive.jpg"><source src="./static/videos/ablation-content16-style01-naive.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content16-style01-wo-fgtr.jpg"><source src="./static/videos/ablation-content16-style01-wo-fgtr.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content16-style01-wo-tiad.jpg"><source src="./static/videos/ablation-content16-style01-wo-tiad.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content16-style01-ucvs.jpg"><source src="./static/videos/ablation-content16-style01-ucvs.mp4" type="video/mp4"></video>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="18-style10" aria-hidden="true">
+                <div class="comparison-scroller" tabindex="0">
+                  <div class="ablation-video-table">
+                    <div class="ablation-video-header" aria-hidden="true"><span>Source Video</span><span>Style Image</span><span>Naive</span><span>w/o FGTR</span><span>w/o TIAD</span><span>UCVS</span></div>
+                    <div class="ablation-video-row" aria-label="Dynamic ablation example 5">
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content18-style10-source.jpg"><source src="./static/videos/ablation-content18-style10-source.mp4" type="video/mp4"></video>
+                      <div class="comparison-style"><img src="./static/media/more-style10.webp" alt="Style 10 reference image"></div>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content18-style10-naive.jpg"><source src="./static/videos/ablation-content18-style10-naive.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content18-style10-wo-fgtr.jpg"><source src="./static/videos/ablation-content18-style10-wo-fgtr.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content18-style10-wo-tiad.jpg"><source src="./static/videos/ablation-content18-style10-wo-tiad.mp4" type="video/mp4"></video>
+                      <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ablation-content18-style10-ucvs.jpg"><source src="./static/videos/ablation-content18-style10-ucvs.mp4" type="video/mp4"></video>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="carousel-arrow carousel-next" type="button" aria-label="Show next ablation example">&#8594;</button>
+          <div class="carousel-pagination" aria-label="Ablation example pages">
+            <button class="is-active" type="button" data-slide="0" aria-label="Show ablation page 1" aria-current="true"></button>
+            <button type="button" data-slide="1" aria-label="Show ablation page 2"></button>
+            <button type="button" data-slide="2" aria-label="Show ablation page 3"></button>
+            <button type="button" data-slide="3" aria-label="Show ablation page 4"></button>
+            <button type="button" data-slide="4" aria-label="Show ablation page 5"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-carousel-section" id="more" aria-labelledby="more-title">
+      <div class="wide-shell">
+        <div class="minimal-heading">
+          <h2 id="more-title">More Results</h2>
+        </div>
+        <div class="results-carousel" data-carousel>
+          <button class="carousel-arrow carousel-prev" type="button" aria-label="Show previous additional result">&#8592;</button>
+          <div class="carousel-viewport" tabindex="0">
+            <div class="carousel-track">
+              <div class="result-slide is-active" data-content="17">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 17 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-source-content17.jpg"><source src="./static/videos/source-content17.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 17 style 14 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content17-style14.jpg"><source src="./static/videos/ours-content17-style14.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style14.png" alt="Style 14 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 17 style 20 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content17-style20.jpg"><source src="./static/videos/ours-content17-style20.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style20.png" alt="Style 20 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 17 style 18 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content17-style18.jpg"><source src="./static/videos/ours-content17-style18.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style18.png" alt="Style 18 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 17 style 13 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content17-style13.jpg"><source src="./static/videos/ours-content17-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style13.png" alt="Style 13 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 17 style 08 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-ours-content17-style08.jpg"><source src="./static/videos/ours-content17-style08.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/style08.png" alt="Style 08 reference image"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="01" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 01 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content01.jpg"><source src="./static/videos/more-source-content01.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 01 style 16 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content01-style16.jpg"><source src="./static/videos/more-ours-content01-style16.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style16.webp" alt="Style 16 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 01 style 10 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content01-style10.jpg"><source src="./static/videos/more-ours-content01-style10.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style10.webp" alt="Style 10 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 01 style 09 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content01-style09.jpg"><source src="./static/videos/more-ours-content01-style09.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style09.png" alt="Style 09 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 01 style 17 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content01-style17.jpg"><source src="./static/videos/more-ours-content01-style17.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style17.png" alt="Style 17 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 01 style 18 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content01-style18.jpg"><source src="./static/videos/more-ours-content01-style18.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style18.png" alt="Style 18 reference image"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="03" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 03 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content03.jpg"><source src="./static/videos/more-source-content03.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 style 01 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content03-style01.jpg"><source src="./static/videos/more-ours-content03-style01.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style01.png" alt="Style 01 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 style 04 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content03-style04.jpg"><source src="./static/videos/more-ours-content03-style04.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style04.png" alt="Style 04 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 style 05 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content03-style05.jpg"><source src="./static/videos/more-ours-content03-style05.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style05.webp" alt="Style 05 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 style 13 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content03-style13.jpg"><source src="./static/videos/more-ours-content03-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style13.png" alt="Style 13 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 03 style 15 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content03-style15.jpg"><source src="./static/videos/more-ours-content03-style15.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style15.png" alt="Style 15 reference image"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="13" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 13 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content13.jpg"><source src="./static/videos/more-source-content13.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 13 style 01 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content13-style01.jpg"><source src="./static/videos/more-ours-content13-style01.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style01.png" alt="Style 01 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 13 style 02 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content13-style02.jpg"><source src="./static/videos/more-ours-content13-style02.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style02.png" alt="Style 02 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 13 style 03 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content13-style03.jpg"><source src="./static/videos/more-ours-content13-style03.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style03.png" alt="Style 03 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 13 style 19 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content13-style19.jpg"><source src="./static/videos/more-ours-content13-style19.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style19.png" alt="Style 19 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 13 style 06 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content13-style06.jpg"><source src="./static/videos/more-ours-content13-style06.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style06.png" alt="Style 06 reference image"></figure>
+                </div>
+              </div>
+
+              <div class="result-slide" data-content="15" aria-hidden="true">
+                <div class="selected-results-grid">
+                  <figure class="selected-result-cell source-cell" aria-label="Content 15 source video"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content15.jpg"><source src="./static/videos/more-source-content15.mp4" type="video/mp4"></video></figure>
+                  <figure class="selected-result-cell" aria-label="Content 15 style 20 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content15-style20.jpg"><source src="./static/videos/more-ours-content15-style20.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style20.png" alt="Style 20 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 15 style 08 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content15-style08.jpg"><source src="./static/videos/more-ours-content15-style08.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style08.png" alt="Style 08 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 15 style 14 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content15-style14.jpg"><source src="./static/videos/more-ours-content15-style14.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style14.png" alt="Style 14 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 15 style 11 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content15-style11.jpg"><source src="./static/videos/more-ours-content15-style11.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style11.png" alt="Style 11 reference image"></figure>
+                  <figure class="selected-result-cell" aria-label="Content 15 style 13 result"><video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content15-style13.jpg"><source src="./static/videos/more-ours-content15-style13.mp4" type="video/mp4"></video><img class="style-overlay" src="./static/media/more-style13.png" alt="Style 13 reference image"></figure>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="carousel-arrow carousel-next" type="button" aria-label="Show next additional result">&#8594;</button>
+          <div class="carousel-pagination" aria-label="More result pages">
+            <button class="is-active" type="button" data-slide="0" aria-label="Show more-result page 1" aria-current="true"></button>
+            <button type="button" data-slide="1" aria-label="Show more-result page 2"></button>
+            <button type="button" data-slide="2" aria-label="Show more-result page 3"></button>
+            <button type="button" data-slide="3" aria-label="Show more-result page 4"></button>
+            <button type="button" data-slide="4" aria-label="Show more-result page 5"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="video-comparison-section" id="more-comparison" aria-labelledby="more-comparison-title">
+      <div class="wide-shell">
+        <div class="minimal-heading">
+          <h2 id="more-comparison-title">More Comparison</h2>
+        </div>
+        <div class="results-carousel" data-carousel>
+          <button class="carousel-arrow carousel-prev" type="button" aria-label="Show previous comparison page">&#8592;</button>
+          <div class="carousel-viewport" tabindex="0">
+            <div class="carousel-track">
+              <div class="result-slide is-active" data-content="comparison-page-1">
+                <div class="comparison-scroller" tabindex="0" aria-label="Scrollable additional video comparison table, page 1">
+                  <div class="comparison-table">
+            <div class="comparison-header" aria-hidden="true">
+              <span>Source</span><span>Style</span><span>AnyV2V</span><span>StyleMaster</span>
+              <span>Bernini</span><span>DreamStyle</span><span>Ours</span>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 01 and style 16 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content01.jpg"><source src="./static/videos/more-source-content01.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/more-style16.webp" alt="Style 16 reference image"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content01-style16-anyv2v.jpg"><source src="./static/videos/more-comparison-content01-style16-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content01-style16-stylemaster.jpg"><source src="./static/videos/more-comparison-content01-style16-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content01-style16-bernini.jpg"><source src="./static/videos/more-comparison-content01-style16-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content01-style16-dreamstyle.jpg"><source src="./static/videos/more-comparison-content01-style16-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content01-style16.jpg"><source src="./static/videos/more-ours-content01-style16.mp4" type="video/mp4"></video>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 03 and style 01 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content03.jpg"><source src="./static/videos/more-source-content03.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/more-style01.png" alt="Style 01 reference image"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content03-style01-anyv2v.jpg"><source src="./static/videos/more-comparison-content03-style01-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content03-style01-stylemaster.jpg"><source src="./static/videos/more-comparison-content03-style01-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content03-style01-bernini.jpg"><source src="./static/videos/more-comparison-content03-style01-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content03-style01-dreamstyle.jpg"><source src="./static/videos/more-comparison-content03-style01-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content03-style01.jpg"><source src="./static/videos/more-ours-content03-style01.mp4" type="video/mp4"></video>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 13 and style 19 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content13.jpg"><source src="./static/videos/more-source-content13.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/more-style19.png" alt="Style 19 reference image"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content13-style19-anyv2v.jpg"><source src="./static/videos/more-comparison-content13-style19-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content13-style19-stylemaster.jpg"><source src="./static/videos/more-comparison-content13-style19-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content13-style19-bernini.jpg"><source src="./static/videos/more-comparison-content13-style19-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content13-style19-dreamstyle.jpg"><source src="./static/videos/more-comparison-content13-style19-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content13-style19.jpg"><source src="./static/videos/more-ours-content13-style19.mp4" type="video/mp4"></video>
+            </div>
+
+            <div class="comparison-row" aria-label="Content 15 and style 20 comparison">
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-source-content15.jpg"><source src="./static/videos/more-source-content15.mp4" type="video/mp4"></video>
+              <div class="comparison-style"><img src="./static/media/more-style20.png" alt="Style 20 reference image"></div>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content15-style20-anyv2v.jpg"><source src="./static/videos/more-comparison-content15-style20-anyv2v.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content15-style20-stylemaster.jpg"><source src="./static/videos/more-comparison-content15-style20-stylemaster.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content15-style20-bernini.jpg"><source src="./static/videos/more-comparison-content15-style20-bernini.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-comparison-content15-style20-dreamstyle.jpg"><source src="./static/videos/more-comparison-content15-style20-dreamstyle.mp4" type="video/mp4"></video>
+              <video muted loop playsinline controls preload="metadata" data-autoplay poster="./static/media/poster-more-ours-content15-style20.jpg"><source src="./static/videos/more-ours-content15-style20.mp4" type="video/mp4"></video>
+                  </div>
+                </div>
+              </div>
+              </div>
+
+              <div class="result-slide" data-content="comparison-page-2" data-comparison-page="1" aria-hidden="true"></div>
+              <div class="result-slide" data-content="comparison-page-3" data-comparison-page="2" aria-hidden="true"></div>
+              <div class="result-slide" data-content="comparison-page-4" data-comparison-page="3" aria-hidden="true"></div>
+              <div class="result-slide" data-content="comparison-page-5" data-comparison-page="4" aria-hidden="true"></div>
+            </div>
+          </div>
+          <button class="carousel-arrow carousel-next" type="button" aria-label="Show next comparison page">&#8594;</button>
+          <div class="carousel-pagination" aria-label="More comparison pages">
+            <button class="is-active" type="button" data-slide="0" aria-label="Show comparison page 1" aria-current="true"></button>
+            <button type="button" data-slide="1" aria-label="Show comparison page 2"></button>
+            <button type="button" data-slide="2" aria-label="Show comparison page 3"></button>
+            <button type="button" data-slide="3" aria-label="Show comparison page 4"></button>
+            <button type="button" data-slide="4" aria-label="Show comparison page 5"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" id="bibtex" aria-labelledby="bibtex-title">
+      <div class="page-shell narrow-shell">
+        <div class="bibtex-heading">
+          <div>
+            <p class="section-kicker">Citation</p>
+            <h2 id="bibtex-title">BibTeX</h2>
+          </div>
+          <button id="copy-bibtex" class="copy-button" type="button">Copy BibTeX</button>
+        </div>
+        <pre class="bibtex"><code id="bibtex-code">@article{hu2026ucvs,
+  author  = {Weihao Hu and Yang Zhou and Hui Huang},
+  title   = {UCVS: Training-Free Universal and Consistent Video Style Transfer},
+  journal = {Computer Graphics Forum (Eurographics)},
+  year    = {2026}
+}</code></pre>
+        <p class="citation-note">Paper and code links will be updated when the work is released.</p>
+      </div>
+    </section>
+
+    <section class="acknowledgements-section" id="acknowledgements" aria-labelledby="acknowledgements-title">
+      <div class="page-shell narrow-shell">
+        <h2 id="acknowledgements-title">Acknowledgements</h2>
+        <p>
+          Website template credit to
+          <a href="https://nerfies.github.io" target="_blank" rel="noreferrer">Nerfies</a>, and is licensed under a
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="license noreferrer">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="page-shell footer-inner">
+      <div><strong>UCVS</strong><span>Training-Free Universal and Consistent Video Style Transfer</span></div>
+    </div>
+  </footer>
+</body>
+</html>
