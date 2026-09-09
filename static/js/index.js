@@ -42,8 +42,8 @@
   ];
 
   const comparisonVideo = (source, poster) => `
-    <video muted loop playsinline controls preload="metadata" data-autoplay poster="${poster}">
-      <source src="${source}" type="video/mp4">
+    <video muted loop playsinline controls preload="none" data-autoplay data-poster="${poster}">
+      <source data-src="${source}" type="video/mp4">
     </video>`;
 
   const comparisonRow = (contentId, styleId) => {
@@ -86,6 +86,24 @@
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let motionPaused = prefersReducedMotion.matches;
 
+  const hydrateVideo = (video) => {
+    if (video.dataset.loaded === 'true') return;
+
+    if (video.dataset.poster) {
+      video.poster = video.dataset.poster;
+      delete video.dataset.poster;
+    }
+
+    video.querySelectorAll('source[data-src]').forEach((source) => {
+      source.src = source.dataset.src;
+      delete source.dataset.src;
+    });
+
+    video.dataset.loaded = 'true';
+    video.preload = 'metadata';
+    video.load();
+  };
+
   const setMotionButton = () => {
     if (!motionToggle) return;
     motionToggle.setAttribute('aria-pressed', String(motionPaused));
@@ -94,6 +112,7 @@
 
   const playVideo = (video) => {
     if (motionPaused) return;
+    hydrateVideo(video);
     const playPromise = video.play();
     if (playPromise) playPromise.catch(() => {});
   };
@@ -106,6 +125,18 @@
       && rect.right > 0
       && rect.left < window.innerWidth;
   };
+
+  const loadObserver = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting
+              && !entry.target.closest('.result-slide[aria-hidden="true"]')) {
+            hydrateVideo(entry.target);
+            loadObserver.unobserve(entry.target);
+          }
+        });
+      }, { rootMargin: '500px 0px', threshold: 0 })
+    : null;
 
   const observer = 'IntersectionObserver' in window
     ? new IntersectionObserver((entries) => {
@@ -124,8 +155,15 @@
   videos.forEach((video) => {
     video.muted = true;
     video.playsInline = true;
+    if (loadObserver) loadObserver.observe(video);
     if (observer) observer.observe(video);
-    else playVideo(video);
+    else {
+      hydrateVideo(video);
+      playVideo(video);
+    }
+    ['pointerdown', 'focus', 'mouseenter'].forEach((eventName) => {
+      video.addEventListener(eventName, () => hydrateVideo(video), { once: true });
+    });
   });
 
   if (motionPaused) videos.forEach((video) => video.pause());
