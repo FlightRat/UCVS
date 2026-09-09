@@ -56,7 +56,7 @@
     return `
       <div class="comparison-row" aria-label="Content ${contentId} and style ${styleId} comparison">
         ${comparisonVideo(`./static/videos/more-source-content${contentId}.mp4`, `./static/media/poster-more-source-content${contentId}.jpg`)}
-        <div class="comparison-style"><img src="./static/media/more-style${styleId}.${styleExtension}" alt="Style ${styleId} reference image"></div>
+        <div class="comparison-style"><img loading="lazy" decoding="async" src="./static/media/more-style${styleId}.${styleExtension}" alt="Style ${styleId} reference image"></div>
         ${methodVideo('anyv2v')}
         ${methodVideo('stylemaster')}
         ${methodVideo('bernini')}
